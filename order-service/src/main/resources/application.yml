@@ -1,0 +1,29 @@
+spring:
+  application:
+    name: order-service
+  datasource:
+    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+#    hikari:
+#      pool-name: order-hikaricp
+#      maximum-pool-size: 10 # Maximum number of connections
+#      minimum-idle: 3 # Minimum idel Connections
+#      idle-timeout: 30000 # 30 sec before releasing idle connections
+#      max-lifetime: 1800000 # 30 min (Must be shorter than MySQL wait_timeout)
+#      connection-timeout: 1200 # 20 Sec Max wait for a connection
+#      auto-commit: true
+  jpa:
+    hibernate:
+      ddl-auto: update
+      naming:
+        physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl 
+    show-sql: true
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQLDialect
+        "[format_sql]": true
+
+server:
+  port: 8118
