@@ -54,7 +54,7 @@ public class Order implements Serializable {
     @Column(nullable = false)
     private double totalOrderAmount;
 
-    @Column(columnDefinition = "varchar(10) default 'PENDING'")
+    @Column(nullable=false)
     private String orderStatus;
 
     @Column(nullable = false)
