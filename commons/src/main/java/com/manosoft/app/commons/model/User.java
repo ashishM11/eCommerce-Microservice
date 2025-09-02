@@ -1,6 +1,7 @@
 package com.manosoft.app.commons.model;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.Collection;
 
 import jakarta.persistence.*;
@@ -59,5 +60,8 @@ public class User {
             inverseJoinColumns = @JoinColumn(name = "userRoleId", referencedColumnName = "userRoleId")
     )
     private Collection<UserRole> userRoles;
+
+    @Column(name = "userCreationDT", nullable = false)
+    private LocalDateTime userCreationDT;
 
 }
