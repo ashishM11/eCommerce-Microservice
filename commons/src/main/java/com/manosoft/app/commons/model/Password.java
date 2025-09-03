@@ -1,6 +1,6 @@
 package com.manosoft.app.commons.model;
 
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 import jakarta.persistence.*;
 import lombok.Data;
@@ -18,9 +18,9 @@ public class Password {
     private String encryptedPassword;
 
     @Column(name = "passwordCreationDT")
-    private LocalDate passwordCreationDT;
+    private LocalDateTime passwordCreationDT;
 
     @Column(name = "passwordCreationDT")
-    private LocalDate passwordLastUpdateDT;
+    private LocalDateTime passwordLastUpdateDT;
 
 }

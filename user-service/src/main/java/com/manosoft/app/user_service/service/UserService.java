@@ -1,6 +1,7 @@
 package com.manosoft.app.user_service.service;
 
-import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Objects;
 import java.util.Optional;
@@ -12,10 +13,12 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.manosoft.app.commons.dto.ChangePasswordRequestDTO;
 import com.manosoft.app.commons.dto.UserRequestDTO;
 import com.manosoft.app.commons.dto.UserSignInRequestDTO;
+import com.manosoft.app.commons.mapper.UserMapper;
 import com.manosoft.app.commons.model.User;
 import com.manosoft.app.commons.model.UserRole;
 import com.manosoft.app.commons.response.UserResponseRecord;
@@ -23,11 +26,12 @@ import com.manosoft.app.user_service.exception.UserNotFoundException;
 import com.manosoft.app.user_service.repository.UserRepository;
 import com.manosoft.app.user_service.repository.UserRoleRepository;
 
-import jakarta.transaction.Transactional;
 import lombok.AllArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @AllArgsConstructor
 @Service
+@Slf4j
 public class UserService {
 
     private final UserRepository userRepository;
@@ -38,11 +42,10 @@ public class UserService {
     private final AuthenticationManager authenticationManager;
 
     @Transactional
-    public String createUser(@NonNull UserRequestDTO requestDTO) throws MessagingException {
-        LocalDate currentDT = LocalDate.now();
-        User user = UserMapper.INSTANCE.fromUserRequestDTO(requestDTO);
-        user.setUserCreationDT(currentDT);
-        user.getPassword().setPasswordCreationDT(currentDT);
+    public String createUser(@NonNull UserRequestDTO requestDTO) {
+        User user = UserMapper.INSTANCE.fromUserRequestDTOToUserModel(requestDTO);
+        user.setUserCreationDT(LocalDateTime.now());
+        user.getPassword().setPasswordCreationDT(LocalDateTime.now());
         UserRole userRole = userRoleRepository.findByUserRoleName("ROLE_USER");
         user.setUserRoles(Set.of(userRole));
         user.setUserAccountEnabled(true);
@@ -50,31 +53,34 @@ public class UserService {
         user.setUserAccountNonLocked(true);
         user.setUserCredentialsNonExpired(true);
         user.getPassword().setEncryptedPassword(passwordEncoder.encode(user.getPassword().getEncryptedPassword()));
-        userRepository.save(user);
-        //mailService.sendEmailFromTemplate("manosoft.creation@gmail.com", user.getUserEmail());
+        try{
+            userRepository.save(user);
+        }catch(Exception objEx){
+            log.error("Error Occured : ", objEx.getMessage());
+        }
         return "Thank You for Registration.";
     }
 
-    @Transactional
+    @Transactional(readOnly = true)
     public UserResponseRecord findUserByItsId(Long userId) {
         Optional<User> optionalUser = userRepository.findById(userId);
         User user = optionalUser.orElse(null);
         if (Objects.nonNull(user)) {
-            return UserMapper.INSTANCE.fromUserModelToResponseDTO(user);
+            return UserMapper.INSTANCE.fromUserModelToResponseRecord(user);
         }
         return null;
     }
 
-    @Transactional
+    @Transactional(readOnly = true)
     public String authenticate(UserSignInRequestDTO userSignInRequestDTO) {
-        authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(userSignInRequestDTO.userEmailOrMobile(), userSignInRequestDTO.userPassword()));
-        UserDetails userDetails = appUserDetailService.loadUserByUsername(userSignInRequestDTO.userEmailOrMobile());
+        authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(userSignInRequestDTO.getUserEmailOrMobile(), userSignInRequestDTO.getUserPassword()));
+        UserDetails userDetails = appUserDetailService.loadUserByUsername(userSignInRequestDTO.getUserEmailOrMobile());
         return jwtService.generateToken(userDetails);
     }
 
-    @Transactional
+    @Transactional(readOnly = true)
     public Set<UserResponseRecord> findAllUsers() {
-        return UserMapper.INSTANCE.fromUserModelsToUserResponseDTOs(new HashSet<>(userRepository.findAll()));
+        return UserMapper.INSTANCE.fromUserModelsToUserResponseRecords(new HashSet<>(userRepository.findAll()));
     }
 
     @Transactional
@@ -88,21 +94,34 @@ public class UserService {
 
     @Transactional
     public String changePasswordRequest(ChangePasswordRequestDTO changePasswordRequestDTO) {
-        String currentPassword, newPassword, confirmPassword;
-        if (Objects.nonNull(changePasswordRequestDTO)) {
-            Optional<User> byUserEmail = userRepository.findByUserEmail(changePasswordRequestDTO.userEmail().trim());
-            User user = byUserEmail.orElseThrow(() -> new UserNotFoundException("Unable to find user."));
-            currentPassword = changePasswordRequestDTO.oldPassword().trim();
-            newPassword = changePasswordRequestDTO.newPassword().trim();
-            confirmPassword = changePasswordRequestDTO.confirmPassword().trim();
-            if (newPassword.equals(confirmPassword) && passwordEncoder.matches(currentPassword,user.getPassword().getEncryptedPassword())) {
-                user.getPassword().setEncryptedPassword(passwordEncoder.encode(newPassword));
-                userRepository.save(user);
-                return "Password changed successfully";
-            }
-            return "Old Password Not Matched";
-        }
-        return null;
-    }
+        char[] currentPassword = changePasswordRequestDTO.getOldPassword().toCharArray();
+        char[] newPassword = changePasswordRequestDTO.getNewPassword().toCharArray();
+        char[] confirmPassword = changePasswordRequestDTO.getConfirmPassword().toCharArray();
 
+        try {
+            User user = userRepository.findByUserEmail(changePasswordRequestDTO.getUserEmail().trim())
+                    .orElseThrow(() -> new UserNotFoundException("Unable to find user."));
+
+            // compare new and confirm
+            if (!Arrays.equals(newPassword, confirmPassword)) {
+                return "New password and Confirm password do not match";
+            }
+
+            // check old password
+            if (!passwordEncoder.matches(new String(currentPassword), user.getPassword().getEncryptedPassword())) {
+                return "Old Password Not Matched";
+            }
+
+            // encode and save new password
+            user.getPassword().setEncryptedPassword(passwordEncoder.encode(new String(newPassword)));
+            userRepository.save(user);
+
+            return "Password changed successfully";
+        } finally {
+            // wipe passwords from memory
+            Arrays.fill(currentPassword, '\0');
+            Arrays.fill(newPassword, '\0');
+            Arrays.fill(confirmPassword, '\0');
+        }
+    }
 }

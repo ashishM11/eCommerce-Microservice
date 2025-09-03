@@ -44,7 +44,7 @@ public class UserController {
     }
 
     @PostMapping("/register")
-    public ResponseEntity<String> registerNewUser(@Valid @RequestBody UserRequestDTO userRequestDTO) throws MessagingException {
+    public ResponseEntity<String> registerNewUser(@Valid @RequestBody UserRequestDTO userRequestDTO){
         return new ResponseEntity<>(userService.createUser(userRequestDTO),HttpStatus.OK);
     }
 

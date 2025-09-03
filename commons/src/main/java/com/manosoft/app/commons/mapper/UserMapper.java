@@ -16,6 +16,7 @@ import com.manosoft.app.commons.response.UserRoleResponseRecord;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Set;
 
 @Mapper
 public interface UserMapper {
@@ -49,6 +50,6 @@ public interface UserMapper {
         return new UserRolePrivilegeResponseRecord(userRolePrivilege.getUserRolePrivilegeId(), userRolePrivilege.getUserRolePrivilegeName());
     }
 
-    List<UserResponseRecord> fromUserModelsToUserResponseRecords(List<User> users);
+    Set<UserResponseRecord> fromUserModelsToUserResponseRecords(Set<User> users);
 
 }
